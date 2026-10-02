@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ client.name }}{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'clients:list' %}">Clients</a>{% icon "right" "sm" %}<span>{{ client.name }}</span></div>
+<div class="page-head">
+  <div class="profile">
+    <span class="avatar avatar-lg tone-{{ client.name|tone }}">{{ client.name|initials }}</span>
+    <div><h1>{{ client.name }}</h1>
+      <div class="meta"><span>{{ client.get_company_type_display }}</span>{% if client.business_id %}<span>·</span><span class="mono">{{ client.business_id }}</span>{% endif %}
+        <span class="pill">{{ client.get_profession_display }}</span>
+        {% if client.opted_out %}<span class="pill pill-warn">Opted out</span>{% elif not client.email %}<span class="pill pill-warn">No email</span>{% endif %}</div></div>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'clients:edit' client.pk %}">{% icon "pencil" "sm" %}Edit</a>
+    {% if client.phone and not client.opted_out %}<a class="btn" href="{% url 'messaging:compose' %}?client={{ client.pk }}&channel=sms">{% icon "phone" "sm" %}Send SMS</a>{% endif %}
+    {% if client.email and not client.opted_out %}<a class="btn btn-primary" href="{% url 'messaging:compose' %}?client={{ client.pk }}">{% icon "mail" "sm" %}Send email</a>{% endif %}
+  </div>
+</div>
+
+<div class="split">
+  <div>
+    <section class="card card-flush">
+      <nav class="tabs" aria-label="Client sections">
+        <a href="?tab=messages" {% if tab == 'messages' %}aria-current="page"{% endif %}>Messages</a>
+        <a href="?tab=notes" {% if tab == 'notes' %}aria-current="page"{% endif %}>Notes</a>
+        <a href="?tab=history" {% if tab == 'history' %}aria-current="page"{% endif %}>Assignment history</a>
+      </nav>
+      {% if tab == 'notes' %}
+        <div class="card-body">{% if client.notes %}<div style="white-space:pre-wrap">{{ client.notes }}</div>{% else %}<p class="muted">No notes yet.</p>{% endif %}
+          <a class="btn btn-sm" href="{% url 'clients:edit' client.pk %}" style="margin-top:12px">{% icon "pencil" "sm" %}Edit notes</a></div>
+      {% elif tab == 'history' %}
+        {% if assignments %}
+        <div class="table-wrap"><table>
+          <thead><tr><th>Date</th><th>From</th><th>To</th><th>Changed by</th></tr></thead>
+          <tbody>{% for a in assignments %}<tr><td class="nowrap">{{ a.changed_at|date:"j.n.Y H:i" }}</td><td>{{ a.from_user.display_name|default:"Unassigned" }}</td><td>{{ a.to_user.display_name|default:"Unassigned" }}</td><td>{{ a.changed_by.display_name|default:"—" }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+        {% else %}<div class="empty"><div class="empty-icon">{% icon "clock" %}</div><h3>No changes yet</h3><p>Moves between team members are recorded here.</p></div>{% endif %}
+      {% else %}
+        {% if client_messages %}
+        <div class="table-wrap"><table>
+          <thead><tr><th>Message</th><th>Sent by</th><th>Status</th></tr></thead>
+          <tbody>{% for m in client_messages %}
+            <tr><td><details><summary class="row-title">{% if m.channel == "sms" %}{% icon "phone" "sm" %} SMS: {{ m.body|truncatechars:50 }}{% else %}{% icon "mail" "sm" %} {{ m.subject }}{% endif %}</summary><div class="preview-body">{{ m.body }}</div></details><span class="sub">{{ m.created_at|date:"j.n.Y H:i" }}</span></td>
+              <td class="nowrap">{{ m.campaign.sender.display_name|default:"—" }}</td>
+              <td>{% if m.status == "sent" and m.is_test_copy %}<span class="pill dot pill-warn">Test</span><span class="sub">{% if m.delivered_to %}Went to {{ m.delivered_to }}{% else %}Only {% if m.channel == "sms" %}logged{% else %}printed{% endif %}, not sent{% endif %}</span>{% elif m.status == "sent" and m.delivery_label %}<span class="pill dot {% if m.delivery_state == 'Delivered' %}pill-sent{% elif m.delivery_state == 'Pending' %}pill-warn{% else %}pill-info{% endif %}">{{ m.delivery_label }}</span>{% if m.delivery_state == "Pending" %}<span class="sub">Phone hasn't sent it yet. Check the SMS Gate app.</span>{% endif %}{% elif m.is_stuck %}<span class="pill dot pill-warn">Interrupted</span>{% else %}<span class="pill dot pill-{{ m.status }}">{{ m.get_status_display }}</span>{% endif %}{% if m.error %}<span class="sub">{{ m.error }}</span>{% endif %}</td></tr>
+          {% endfor %}</tbody>
+        </table></div>
+        {% else %}<div class="empty"><div class="empty-icon">{% icon "mail" %}</div><h3>No messages yet</h3><p>Emails sent to this client appear here.</p></div>{% endif %}
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="card">
+      <h3>Contact</h3>
+      <dl class="details">
+        <dt>Email</dt><dd>{% if client.email %}{{ client.email }} <button type="button" class="copy-btn" data-copy="{{ client.email }}" aria-label="Copy email">{% icon "copy" "sm" %}</button>{% else %}<a class="add-link" href="{% url 'clients:edit' client.pk %}?next={{ request.get_full_path|urlencode }}#id_email">{% icon "plus" "sm" %}Add email</a>{% endif %}</dd>
+        <dt>Phone</dt><dd>{% if client.phone %}{{ client.phone }}{% else %}<a class="add-link" href="{% url 'clients:edit' client.pk %}?next={{ request.get_full_path|urlencode }}#id_phone">{% icon "plus" "sm" %}Add phone</a>{% endif %}</dd>
+        <dt>Language</dt><dd>{{ client.get_language_display }}</dd>
+        {% if client.opted_out %}<dt>Opted out</dt><dd>{{ client.opted_out_at|date:"j.n.Y"|default:"Yes" }}</dd>{% endif %}
+      </dl>
+    </section>
+    <section class="card">
+      <h3>Team member</h3>
+      {% if user.is_admin %}
+      <form method="post" action="{% url 'clients:bulk_assign' %}">{% csrf_token %}
+        <input type="hidden" name="client_ids" value="{{ client.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <label class="sr-only" for="assign_to">Handled by</label>
+        <div class="input-group">
+          <select id="assign_to" name="assign_to">
+            {% for m in members %}<option value="{{ m.pk }}" {% if m.pk == client.owner_id %}selected{% endif %}>{{ m.display_name }}</option>{% endfor %}
+            <option value="none" {% if not client.owner %}selected{% endif %}>Unassigned</option>
+          </select>
+          <button class="btn" type="submit">Save</button>
+        </div>
+      </form>
+      {% elif client.owner %}<span class="person-inline"><span class="avatar avatar-sm tone-{{ client.owner.display_name|tone }}">{{ client.owner.display_name|initials }}</span>{{ client.owner.display_name }}</span>{% endif %}
+    </section>
+    {% if user.is_admin %}
+    <form method="post" action="{% url 'clients:delete' client.pk %}" data-confirm="Delete {{ client.name }} and all their message history? This cannot be undone.">{% csrf_token %}
+      <button class="btn btn-danger btn-sm" type="submit">{% icon "trash" "sm" %}Delete client</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

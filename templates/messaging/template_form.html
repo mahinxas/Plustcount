@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{% if template_obj %}Edit template{% else %}New template{% endif %}{{ sms_rules|json_script:"sms-rules" }}
+{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'messaging:templates' %}?channel={{ form.channel.value|default:'email' }}">Templates</a>{% icon "right" "sm" %}<span>{% if template_obj %}{{ template_obj.title }}{% else %}New template{% endif %}</span></div>
+<div class="page-head"><h1>{% if template_obj %}Edit template{% else %}New template{% endif %}</h1></div>
+<form method="post" class="card" data-template-form>{% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="form-narrow">{% include "_field.html" with field=form.title %}</div>
+  <fieldset class="field">
+    <legend class="label">Channel</legend>
+    <div class="segmented" role="radiogroup">
+      {% for radio in form.channel %}
+      <label class="segment">{{ radio.tag }}<span>{% if radio.data.value == "sms" %}{% icon "phone" "sm" %}{% else %}{% icon "mail" "sm" %}{% endif %}{{ radio.choice_label }}</span></label>
+      {% endfor %}
+    </div>
+    {{ form.channel.errors }}
+  </fieldset>
+  <div class="chips-insert"><span>Fields:</span>{% for key, label in fields.items %}<code class="chip-btn" title="{{ label }}">{{ "{" }}{{ key }}{{ "}" }}</code>{% endfor %}</div>
+  <div class="grid-2">
+    <div><h3>Finnish</h3><div data-email-only>{% include "_field.html" with field=form.subject_fi %}</div>{% include "_field.html" with field=form.body_fi %}
+      <div class="sms-counter" data-sms-only data-raw-counter="body_fi" aria-live="polite"></div></div>
+    <div><h3>English</h3><div data-email-only>{% include "_field.html" with field=form.subject_en %}</div>{% include "_field.html" with field=form.body_en %}
+      <div class="sms-counter" data-sms-only data-raw-counter="body_en" aria-live="polite"></div></div>
+  </div>
+  <p class="help">Use {due_date} instead of a fixed date, so the sender picks the date each time.</p>
+  <div class="form-actions"><button class="btn btn-primary" type="submit">Save template</button><a class="btn btn-ghost" href="{% url 'messaging:templates' %}?channel={{ form.channel.value|default:'email' }}">Cancel</a></div>
+</form>
+{% if template_obj %}
+<form method="post" action="{% url 'messaging:template_delete' template_obj.pk %}" class="section-gap" data-confirm="Delete this template? Sent messages are not affected.">{% csrf_token %}
+  <button class="btn btn-danger btn-sm" type="submit">{% icon "trash" "sm" %}Delete template</button></form>
+{% endif %}
+{% endblock %}

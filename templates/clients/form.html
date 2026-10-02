@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'clients:list' %}">Clients</a>{% icon "right" "sm" %}{% if client %}<a href="{% url 'clients:detail' client.pk %}">{{ client.name }}</a>{% icon "right" "sm" %}<span>Edit</span>{% else %}<span>Add client</span>{% endif %}</div>
+<div class="page-head"><h1>{{ title }}</h1></div>
+<form method="post" class="card form-narrow">{% csrf_token %}
+  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+  {{ form.non_field_errors }}
+  <div class="form-section">
+    <h3>Company</h3>
+    {% include "_field.html" with field=form.name %}
+    <div class="form-row">{% include "_field.html" with field=form.business_id %}{% include "_field.html" with field=form.company_type %}</div>
+    <div class="form-row">{% include "_field.html" with field=form.profession %}{% if form.owner %}{% include "_field.html" with field=form.owner %}{% endif %}</div>
+  </div>
+  <div class="form-section">
+    <h3>Contact</h3>
+    <div class="form-row">{% include "_field.html" with field=form.email %}{% include "_field.html" with field=form.phone %}</div>
+    <div class="form-row">{% include "_field.html" with field=form.language %}</div>
+    {% include "_field.html" with field=form.opted_out %}
+  </div>
+  <div class="form-section">
+    {% include "_field.html" with field=form.notes %}
+  </div>
+  <div class="form-actions"><button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-ghost" href="{% if next %}{{ next }}{% elif client %}{% url 'clients:detail' client.pk %}{% else %}{% url 'clients:list' %}{% endif %}">Cancel</a></div>
+</form>
+{% endblock %}

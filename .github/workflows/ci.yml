@@ -1,0 +1,43 @@
+name: CI
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env: {POSTGRES_DB: cms, POSTGRES_USER: cms, POSTGRES_PASSWORD: cms}
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cms" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+    env:
+      DATABASE_URL: postgres://cms:cms@localhost:5432/cms
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      DJANGO_DEBUG: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: {enable-cache: true}
+      - run: uv sync --frozen
+      - name: Migrations are in sync with the models
+        run: uv run python manage.py makemigrations --check --dry-run
+      - name: Tests
+        run: uv run python manage.py test
+      - name: Production settings pass Django's deploy checks
+        env:
+          DJANGO_DEBUG: "0"
+          DJANGO_SECRET_KEY: ci-only-not-a-real-secret-key-0123456789-abcdefghijklmnopqrstuvwxyz
+          DJANGO_ALLOWED_HOSTS: example.test
+        run: |
+          uv run python manage.py check --deploy --fail-level ERROR
+          uv run python manage.py collectstatic --noinput

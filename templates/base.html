@@ -1,0 +1,67 @@
+{% load static ui %}<!doctype html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <script src="{% static 'js/theme.js' %}?v={{ ASSET_VERSION }}"></script>
+  <title>{% block title %}Client Messaging{% endblock %} · Client Messaging</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v={{ ASSET_VERSION }}">
+</head>
+<body>
+{% include "_icons.html" %}
+{% with app=request.resolver_match.app_name name=request.resolver_match.url_name %}
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="{% url 'dashboard' %}"><span class="brand-mark">CM</span><span class="brand-name">Client Messaging<span>Tilitoimisto</span></span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="{% url 'dashboard' %}" {% if name == 'dashboard' %}aria-current="page"{% endif %}>{% icon "grid" %}<span>Dashboard</span></a>
+      <a href="{% url 'clients:list' %}" {% if app == 'clients' %}aria-current="page"{% endif %}>{% icon "users" %}<span>Clients</span></a>
+      <a href="{% url 'messaging:log' %}" {% if app == 'messaging' and 'template' not in name %}aria-current="page"{% endif %}>{% icon "mail" %}<span>Messages</span></a>
+      <a href="{% url 'messaging:templates' %}" {% if 'template' in name %}aria-current="page"{% endif %}>{% icon "file" %}<span>Templates</span></a>
+      {% if user.is_admin %}
+        <div class="nav-label">Admin</div>
+        <a href="{% url 'team' %}" {% if 'team' in name %}aria-current="page"{% endif %}>{% icon "briefcase" %}<span>Team</span></a>
+      {% endif %}
+    </nav>
+  </aside>
+  <div>
+    <header class="topbar">
+      <form class="global-search{% if name == 'list' and app == 'clients' %} is-hidden{% endif %}" method="get" action="{% url 'clients:list' %}" role="search">
+        {% icon "search" %}
+        <label class="sr-only" for="global-q">Search clients</label>
+        <input type="search" id="global-q" name="q" placeholder="Search clients" value="{% if app == 'clients' %}{{ request.GET.q }}{% endif %}" data-global-search>
+        <kbd data-shortcut-hint>⌘K</kbd>
+      </form>
+      <div class="user-menu">
+        <button type="button" class="btn btn-sm btn-icon btn-ghost theme-toggle" data-theme-toggle aria-label="Switch theme" title="Switch theme">
+          <svg class="icon i-moon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"/></svg>
+          <svg class="icon i-sun" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sun"/></svg>
+        </button>
+        <div class="user-chip">
+          <span class="avatar avatar-sm tone-{{ user.display_name|tone }}">{{ user.display_name|initials }}</span>
+          <div>{{ user.display_name }}<small>{{ user.get_role_display }}</small></div>
+        </div>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+          <button class="btn btn-sm" type="submit" title="Log out">{% icon "logout" "sm" %}<span>Log out</span></button>
+        </form>
+      </div>
+    </header>
+    {% if MESSAGING_TEST_MODE or SMS_TEST_MODE %}
+      <div class="test-banner" role="status">{% icon "alert" "sm" %}<span>{% if MESSAGING_TEST_MODE and SMS_TEST_MODE %}<strong>Test mode:</strong> nothing reaches clients.{% elif MESSAGING_TEST_MODE %}<strong>Email test mode.</strong> SMS are live.{% else %}<strong>SMS test mode.</strong> Emails are live.{% endif %}</span></div>
+    {% endif %}
+    <main class="main">
+      {% if messages %}
+        <ul class="flash" role="status">
+          {% for m in messages %}<li class="{{ m.tags }}">{% if m.tags == 'success' %}{% icon "check" %}{% elif m.tags == 'error' or m.tags == 'warning' %}{% icon "alert" %}{% endif %}<span>{{ m }}</span></li>{% endfor %}
+        </ul>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endwith %}
+<script src="{% static 'js/app.js' %}?v={{ ASSET_VERSION }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

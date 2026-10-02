@@ -1,0 +1,23 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <script src="{% static 'js/theme.js' %}?v={{ ASSET_VERSION }}"></script>
+  <title>{% block title %}{% endblock %} · Client Messaging</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v={{ ASSET_VERSION }}">
+</head>
+<body>
+{% include "_icons.html" %}
+<button type="button" class="btn btn-sm btn-icon btn-ghost theme-toggle auth-theme" data-theme-toggle aria-label="Switch theme" title="Switch theme">
+  <svg class="icon i-moon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"/></svg>
+  <svg class="icon i-sun" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sun"/></svg>
+</button>
+<main class="auth"><div class="auth-box">
+  <div class="brand"><span class="brand-mark">CM</span><span class="brand-name">Client Messaging<span>Tilitoimisto</span></span></div>
+  <div class="card">{% block content %}{% endblock %}</div>
+</div></main>
+<script src="{% static 'js/app.js' %}?v={{ ASSET_VERSION }}"></script>
+</body>
+</html>

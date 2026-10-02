@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Import clients{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'clients:list' %}">Clients</a>{% icon "right" "sm" %}<span>Import</span></div>
+<div class="page-head"><div><h1>Import clients</h1>{% include "clients/_import_steps.html" with step=1 %}</div></div>
+<form method="post" enctype="multipart/form-data" class="card form-narrow">{% csrf_token %}
+  {% include "_field.html" with field=form.file %}
+  <div class="form-actions"><button class="btn btn-primary" type="submit">Continue{% icon "arrow" "sm" %}</button><a class="btn btn-ghost" href="{% url 'clients:list' %}">Cancel</a></div>
+</form>
+{% endblock %}

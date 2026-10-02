@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Send details{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'messaging:log' %}">Messages</a>{% icon "right" "sm" %}<span>Send details</span></div>
+<div class="page-head">
+  <div><h1>{% if campaign.is_sms %}SMS to {{ campaign.recipient_count }} client{{ campaign.recipient_count|pluralize }}{% else %}{{ campaign.display_subject }}{% endif %}</h1>
+    <div class="meta">{% if campaign.sender %}<span class="person-inline"><span class="avatar avatar-sm tone-{{ campaign.sender.display_name|tone }}">{{ campaign.sender.display_name|initials }}</span>{{ campaign.sender.display_name }}</span> ·{% endif %}
+      <span>{{ campaign.created_at|date:"j.n.Y H:i" }}</span>{% if campaign.template %} · <span>Template: {{ campaign.template.title }}</span>{% endif %}
+      <span class="pill">{% if campaign.is_sms %}{% icon "phone" "sm" %}{% else %}{% icon "mail" "sm" %}{% endif %}{{ campaign.get_channel_display }}</span>
+      <span class="pill dot pill-{{ campaign.status }}">{{ campaign.get_status_display }}</span>{% if campaign.test_mode %}<span class="pill pill-warn">Test mode{% if campaign.is_sms %}: SMS only logged{% endif %}</span>{% endif %}</div></div>
+  <div class="actions">
+    {% if in_progress %}<a class="btn" href="">Refresh</a>{% endif %}
+    {% if retryable %}<form method="post" action="{% url 'messaging:message_action' %}">{% csrf_token %}<input type="hidden" name="campaign" value="{{ campaign.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-primary" name="action" value="retry">Retry {{ retryable }} message{{ retryable|pluralize }}</button></form>{% endif %}
+    {% if cancellable %}<form method="post" action="{% url 'messaging:message_action' %}">{% csrf_token %}<input type="hidden" name="campaign" value="{{ campaign.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn" name="action" value="cancel">Cancel {{ cancellable }} waiting</button></form>{% endif %}
+  </div>
+</div>
+
+<div class="grid-4">
+  <div class="card stat"><div class="stat-top"><span>Recipients</span><span class="stat-icon">{% icon "users" %}</span></div><div class="stat-value">{{ campaign.recipient_count }}</div>{% if campaign.is_sms %}<div class="stat-note">{{ sms_parts }} SMS used</div>{% endif %}</div>
+  <div class="card stat"><div class="stat-top"><span>Sent</span><span class="stat-icon success">{% icon "check" %}</span></div><div class="stat-value">{{ counts.sent }}</div>
+    <div class="progress-row"><div class="progress"><span style="width: {{ counts.sent|percent:campaign.recipient_count }}%"></span></div><span class="xsmall">{{ counts.sent|percent:campaign.recipient_count }}%</span></div></div>
+  <div class="card stat"><div class="stat-top"><span>Failed</span><span class="stat-icon danger">{% icon "alert" %}</span></div><div class="stat-value">{{ counts.failed }}</div></div>
+  <div class="card stat"><div class="stat-top"><span>Skipped</span><span class="stat-icon warning">{% icon "ban" %}</span></div><div class="stat-value">{{ campaign.skipped_opted_out|add:campaign.skipped_no_address }}</div>
+    <div class="stat-note">{{ campaign.skipped_opted_out }} opted out · {{ campaign.skipped_no_address }} no {% if campaign.is_sms %}phone{% else %}email{% endif %}</div></div>
+</div>
+{% if in_progress %}<div class="callout callout-info section-gap">{% icon "clock" %}<span class="grow">Still sending: {{ counts.queued|add:counts.sending }} waiting. Refresh to update.</span></div>{% endif %}
+
+<section class="card card-flush section-gap">
+  <div class="card-head"><h2>Recipients</h2></div>
+  {% if campaign.is_sms %}<div class="card-body"><div class="preview preview-sms"><div class="preview-head">Message as written</div><div class="preview-body"><div class="sms-bubble">{{ campaign.body_en|default:campaign.body_fi }}</div></div></div></div>{% endif %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Client</th><th>Language</th><th>Status</th><th>Sent at</th></tr></thead>
+    <tbody>{% for m in message_list %}
+      <tr><td><div class="cell-person"><span class="avatar avatar-sm tone-{{ m.client.name|tone }}">{{ m.client.name|initials }}</span><div><a class="row-title" href="{% url 'clients:detail' m.client_id %}">{{ m.client.name }}</a><span class="sub">{{ m.to_address }}</span></div></div></td>
+        <td class="small">{{ m.language|upper }}</td>
+        <td>{% if m.status == "sent" and m.is_test_copy %}<span class="pill dot pill-warn">Test</span><span class="sub">{% if m.delivered_to %}Went to {{ m.delivered_to }}{% else %}Not sent to the client{% endif %}</span>{% elif m.status == "sent" and m.delivery_label %}<span class="pill dot {% if m.delivery_state == 'Delivered' %}pill-sent{% elif m.delivery_state == 'Pending' %}pill-warn{% else %}pill-info{% endif %}">{{ m.delivery_label }}</span>{% if m.delivery_state == "Pending" %}<span class="sub">Phone hasn't sent it yet. Check the SMS Gate app.</span>{% endif %}{% elif m.is_stuck %}<span class="pill dot pill-warn">Interrupted</span>{% else %}<span class="pill dot pill-{{ m.status }}">{{ m.get_status_display }}</span>{% endif %}{% if m.error %}<span class="sub">{{ m.error }}</span>{% endif %}{% if m.can_retry or m.can_cancel %}<form method="post" action="{% url 'messaging:message_action' %}" class="row-actions">{% csrf_token %}<input type="hidden" name="message_ids" value="{{ m.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">{% if m.can_retry %}<button class="btn btn-sm" name="action" value="retry" {% if m.is_stuck and m.status == "sending" %}data-confirm="This message was interrupted while sending. It may already have arrived. Send it again?"{% endif %}>Retry</button>{% endif %}{% if m.can_cancel %}<button class="btn btn-sm btn-ghost" name="action" value="cancel">Cancel</button>{% endif %}</form>{% endif %}</td>
+        <td class="nowrap">{{ m.sent_at|date:"j.n.Y H:i"|default:"—" }}</td></tr>
+    {% empty %}<tr><td colspan="4"><div class="empty">No recipients you can see.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

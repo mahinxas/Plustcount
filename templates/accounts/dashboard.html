@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% greeting %}, {{ user.first_name|default:user.display_name }}</h1>
+    <p>{% now "l j.n.Y" %}</p>
+  </div>
+  <div class="actions">
+    {% if user.is_admin %}<a class="btn" href="{% url 'clients:import_upload' %}">{% icon "upload" %}Import clients</a>{% endif %}
+    <a class="btn btn-primary" href="{% url 'clients:list' %}">{% icon "users" %}Choose clients</a>
+  </div>
+</div>
+
+{% if user.is_admin and unassigned_count %}
+<div class="callout callout-warn" role="status">{% icon "user-plus" %}
+  <span class="grow">{{ unassigned_count }} client{{ unassigned_count|pluralize }} {{ unassigned_count|pluralize:"has,have" }} no team member.</span>
+  <a class="btn btn-sm" href="{% url 'clients:list' %}?owner=none">Assign now</a></div>
+{% endif %}
+{% if failed_recent %}
+<div class="callout callout-danger" role="status">{% icon "alert" %}
+  <span class="grow">{{ failed_recent }} message{{ failed_recent|pluralize }} failed this week.</span>
+  <a class="btn btn-sm" href="{% url 'messaging:log' %}?status=failed&days=7">Review</a></div>
+{% endif %}
+
+{% if usage_bars %}
+<div class="grid-2 usage-row">
+  {% for bar in usage_bars %}
+  {% if bar.unlimited %}
+  <section class="card usage" aria-label="{{ bar.title }}">
+    <div class="usage-top">
+      <span class="usage-title">{% icon bar.icon "sm" %} {{ bar.title }}</span>
+      <span class="usage-count"><strong>{{ bar.sent }}</strong> sent</span>
+    </div>
+  </section>
+  {% else %}
+  <section class="card usage usage-{{ bar.level }}" aria-label="{{ bar.title }}">
+    <div class="usage-top">
+      <span class="usage-title">{% icon bar.icon "sm" %} {{ bar.title }}</span>
+      <span class="usage-count"><strong>{{ bar.quota.remaining }}</strong> of {{ bar.quota.limit }} left</span>
+    </div>
+    <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="{{ bar.quota.limit }}" aria-valuenow="{{ bar.quota.used }}" aria-label="{{ bar.quota.used }} of {{ bar.quota.limit }} {{ bar.word }} used today"><span style="width: {{ bar.pct }}%"></span></div>
+    <div class="usage-note">{% if bar.level == "danger" %}Daily limit reached. More {{ bar.word }} {{ bar.quota.resets_at|date:"D j.n." }} at {{ bar.quota.resets_at|time:"H:i" }}.{% elif bar.level == "warning" %}Near daily limit.{% else %}{{ bar.quota.used }} used. Resets {{ bar.quota.resets_at|date:"D j.n." }} at {{ bar.quota.resets_at|time:"H:i" }}.{% endif %}</div>
+  </section>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid-4">
+  <a class="card stat" href="{% url 'clients:list' %}">
+    <div class="stat-top"><span>{% if user.is_admin %}Clients{% else %}My clients{% endif %}</span><span class="stat-icon">{% icon "users" %}</span></div>
+    <div class="stat-value">{{ client_count }}</div>
+    <div class="stat-note">{% if user.is_admin %}{{ unassigned_count }} unassigned{% else %}Assigned to you{% endif %}</div>
+  </a>
+  <a class="card stat" href="{% url 'messaging:log' %}?status=sent&days=30">
+    <div class="stat-top"><span>Messages sent</span><span class="stat-icon success">{% icon "send" %}</span></div>
+    <div class="stat-value">{{ sent_30d }}</div>
+    <div class="stat-note">{{ email_30d }} email · {{ sms_30d }} SMS · 30 days</div>
+  </a>
+  <a class="card stat" href="{% url 'messaging:log' %}?status=failed&days=7">
+    <div class="stat-top"><span>Failed</span><span class="stat-icon danger">{% icon "alert" %}</span></div>
+    <div class="stat-value">{{ failed_recent }}</div>
+    <div class="stat-note">Last 7 days</div>
+  </a>
+  <a class="card stat" href="{% url 'clients:list' %}?status=cannot_receive">
+    <div class="stat-top"><span>Can't receive email</span><span class="stat-icon warning">{% icon "ban" %}</span></div>
+    <div class="stat-value">{{ cannot_receive_count }}</div>
+    <div class="stat-note">{{ opted_out_count }} opted out · {{ no_email_count }} no email</div>
+  </a>
+</div>
+
+<div class="split section-gap">
+  <section class="card card-flush">
+    <div class="card-head"><h2>Recent sends</h2><a class="btn btn-sm" href="{% url 'messaging:log' %}">View all</a></div>
+    {% if recent_campaigns %}
+    <div class="table-wrap"><table>
+      <thead><tr><th class="col-min">Message</th><th class="col-progress">Progress</th><th>Status</th><th class="hide-sm"></th></tr></thead>
+      <tbody>
+      {% for c in recent_campaigns %}
+        <tr>
+          <td><a class="row-title" href="{% url 'messaging:campaign_detail' c.pk %}">{{ c.display_subject|truncatechars:60 }}</a>
+            <span class="sub">{% if user.is_admin %}{{ c.sender.display_name|default:"—" }} · {% endif %}{{ c.created_at|date:"j.n.Y H:i" }}</span></td>
+          <td><div class="progress-row"><div class="progress"><span style="width: {{ c.sent|percent:c.recipient_count }}%"></span></div><span class="xsmall">{{ c.sent }}/{{ c.recipient_count }}</span></div>
+            {% if c.failed %}<span class="sub" style="color: var(--danger)">{{ c.failed }} failed</span>{% endif %}</td>
+          <td class="nowrap"><span class="pill dot pill-{{ c.status }}">{{ c.get_status_display }}</span>{% if c.test_mode %} <span class="pill pill-warn">Test</span>{% endif %}</td>
+          <td class="num hide-sm"><a class="btn btn-sm" href="{% url 'messaging:campaign_detail' c.pk %}">{% icon "eye" "sm" %}Details</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <div class="empty"><div class="empty-icon">{% icon "send" %}</div><h3>No messages yet</h3><p>Choose clients to send your first message.</p><a class="btn btn-primary" href="{% url 'clients:list' %}">Choose clients</a></div>
+    {% endif %}
+  </section>
+
+  <div class="stack">
+    {% if user.is_admin %}
+    <section class="card card-flush">
+      <div class="card-head"><h2>Team workload</h2><a class="btn btn-sm" href="{% url 'team' %}">Manage</a></div>
+      <div class="card-body">
+        <ul class="hbars" aria-label="Clients per team member">
+          {% for m in team %}
+          <li><a class="hbar" href="{% url 'clients:list' %}?owner={{ m.pk }}" aria-label="{{ m.display_name }}: {{ m.client_count }} clients, {{ m.sent_30d }} emails sent in 30 days">
+            <span class="hbar-name"><span class="avatar avatar-sm tone-{{ m.display_name|tone }}">{{ m.display_name|initials }}</span>{{ m.display_name }}</span>
+            <span class="hbar-plot"><span class="hbar-fill" style="width: {{ m.client_count|percent:team_max }}%"></span><span class="hbar-value">{{ m.client_count }}</span></span>
+            <span class="viz-tip" role="tooltip">{{ m.client_count }} client{{ m.client_count|pluralize }} · {{ m.sent_30d }} sent in 30 days</span>
+          </a></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="card card-flush">
+      <div class="card-head"><h2>Clients by profession</h2></div>
+      <div class="card-body">
+        {% if profession_total %}
+        <div class="donut-block" data-donut>
+          <div class="donut-wrap">
+            <svg class="donut" viewBox="0 0 160 160" role="img" aria-label="Clients by profession: {% for p in professions %}{{ p.label }} {{ p.count }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+              {% for p in professions %}{% if p.count %}
+              <circle class="donut-seg" data-seg="{{ p.slot }}" cx="80" cy="80" r="62" pathLength="100" stroke="var(--series-{{ p.slot }})"
+                stroke-dasharray="{{ p.dash }} {{ p.rest }}" stroke-dashoffset="{{ p.offset }}" transform="rotate(-90 80 80)"></circle>
+              {% endif %}{% endfor %}
+            </svg>
+            <div class="donut-center" aria-hidden="true"><strong data-center-value data-default="{{ profession_total }}">{{ profession_total }}</strong><span data-center-label data-default="clients">clients</span></div>
+          </div>
+          <ul class="legend">
+            {% for p in professions %}
+            <li><a href="{% url 'clients:list' %}?profession={{ p.value }}" data-seg="{{ p.slot }}" data-count="{{ p.count }}" data-label="{{ p.label }}">
+              <span class="swatch" style="background: var(--series-{{ p.slot }})"></span>
+              <span class="legend-label">{{ p.label }}</span>
+              <span class="legend-value">{{ p.count }}</span><span class="legend-pct">{{ p.pct }}%</span>
+            </a></li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% else %}
+        <div class="empty" style="padding:24px 0">No clients yet.</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

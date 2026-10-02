@@ -1,0 +1,7 @@
+<ol class="stepper" aria-label="Import progress">
+  <li class="{% if step == 1 %}on{% else %}done{% endif %}"><span class="n">{% if step > 1 %}✓{% else %}1{% endif %}</span>Upload</li>
+  <li class="sep" aria-hidden="true"></li>
+  <li class="{% if step == 2 %}on{% elif step > 2 %}done{% endif %}"><span class="n">{% if step > 2 %}✓{% else %}2{% endif %}</span>Match columns</li>
+  <li class="sep" aria-hidden="true"></li>
+  <li class="{% if step == 3 %}on{% endif %}"><span class="n">3</span>Check and import</li>
+</ol>

@@ -1,0 +1,13 @@
+{# One language version: fields plus live preview. "single" puts the preview beside the fields. #}
+<div class="lang-col{% if single %} lang-single{% endif %}">
+  <div>
+    <h3>{{ label }} <span class="pill">{{ count }} client{{ count|pluralize }}</span></h3>
+    {% if is_sms %}{{ subject.as_hidden }}{% else %}{% include "_field.html" with field=subject %}{% endif %}
+    {% include "_field.html" with field=body %}
+    {% if is_sms %}<div class="sms-counter" data-sms-counter="{{ lang }}" data-max="{{ sms_max_parts }}" aria-live="polite"></div>{% endif %}
+  </div>
+  <div class="preview{% if is_sms %} preview-sms{% endif %}" data-preview="{{ lang }}" {% if not has_sample %}hidden{% endif %}>
+    <div class="preview-head">Preview for <strong data-preview-name></strong>{% if not is_sms %}<br><span data-preview-subject></span>{% endif %}</div>
+    <div class="preview-body"><div class="{% if is_sms %}sms-bubble{% endif %}" data-preview-body></div></div>
+  </div>
+</div>

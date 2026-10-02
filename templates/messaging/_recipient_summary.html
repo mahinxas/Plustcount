@@ -1,0 +1,15 @@
+{% load ui %}
+<div class="recipients">
+  <div class="avatar-stack">{% for c in summary.sendable|slice:":5" %}<span class="avatar avatar-sm tone-{{ c.name|tone }}" title="{{ c.name }}">{{ c.name|initials }}</span>{% endfor %}</div>
+  <div>
+    <p class="summary-line">{% if channel == "sms" %}SMS{% else %}Email{% endif %} to {{ summary.sendable|length }} client{{ summary.sendable|length|pluralize }}</p>
+    <span class="sub">{% if summary.sendable|length <= 3 %}{% for c in summary.sendable %}{{ c.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% else %}{% for c in summary.sendable|slice:":3" %}{{ c.name }}, {% endfor %}and {{ summary.sendable|length|add:"-3" }} more{% endif %}</span>
+  </div>
+</div>
+{% if over_limit %}
+<div class="callout callout-danger" style="margin:16px 0 0">{% icon "alert" %}<span class="grow">Only {{ quota.remaining }} of today's {{ quota.limit }} {% if channel == "sms" %}SMS{% else %}emails{% endif %} are left. Select fewer clients or send the rest tomorrow.</span></div>
+{% endif %}
+{% if summary.opted_out or summary.no_address %}
+<div class="callout callout-warn" style="margin:16px 0 0">{% icon "ban" %}<span class="grow">Skipped automatically:
+  {% if summary.opted_out %}{{ summary.opted_out }} opted out{% endif %}{% if summary.opted_out and summary.no_address %}, {% endif %}{% if summary.no_address %}{{ summary.no_address }} without {% if channel == "sms" %}phone{% else %}email{% endif %}{% endif %}.</span></div>
+{% endif %}

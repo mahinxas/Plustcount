@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{% if member %}Edit {{ member.display_name }}{% else %}Add team member{% endif %}{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'team' %}">Team</a>{% icon "right" "sm" %}<span>{% if member %}{{ member.display_name }}{% else %}Add team member{% endif %}</span></div>
+<div class="page-head"><h1>{% if member %}Edit {{ member.display_name }}{% else %}Add team member{% endif %}</h1></div>
+<form method="post" class="card form-narrow">{% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="form-row">{% include "_field.html" with field=form.first_name %}{% include "_field.html" with field=form.last_name %}</div>
+  <div class="form-row">{% include "_field.html" with field=form.email %}{% include "_field.html" with field=form.role %}</div>
+  <div class="field">
+    <label for="{{ form.password.id_for_label }}">Password{% if member %} <span class="optional">(optional)</span>{% endif %}</label>
+    <div class="input-group">
+      <input type="password" name="password" id="{{ form.password.id_for_label }}" autocomplete="new-password" {% if not member %}required{% endif %} aria-describedby="pw-help">
+      <button type="button" class="btn" data-password-toggle aria-pressed="false">Show</button>
+      <button type="button" class="btn" data-password-generate>Generate</button>
+    </div>
+    <div class="help" id="pw-help">{{ form.password.help_text }}</div>
+    {{ form.password.errors }}
+  </div>
+  {% include "_field.html" with field=form.is_active %}
+  <div class="form-actions"><button class="btn btn-primary" type="submit">Save</button><a class="btn btn-ghost" href="{% url 'team' %}">Cancel</a></div>
+</form>
+{% endblock %}

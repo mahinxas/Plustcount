@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Review and send{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'clients:list' %}">Clients</a>{% icon "right" "sm" %}<span>Send message</span></div>
+<div class="page-head"><div><h1>Review and send</h1>{% include "messaging/_stepper.html" with step=2 %}</div></div>
+
+<section class="card">
+  {% include "messaging/_recipient_summary.html" %}
+  <form method="post" class="form-actions" style="margin-top:20px">{% csrf_token %}
+    {% for field in form %}{{ field.as_hidden }}{% endfor %}
+    <button class="btn btn-primary" type="submit" name="step" value="send" data-once>{% icon "send" "sm" %}Send {{ summary.sendable|length }} {% if channel == "sms" %}SMS{% else %}email{{ summary.sendable|length|pluralize }}{% endif %}</button>
+    <button class="btn" type="submit" name="step" value="edit">{% icon "left" "sm" %}Back to editing</button>
+    {% if channel == "sms" %}<span class="pill">About {{ sms_total }} SMS in total</span>{% endif %}
+    {% if quota %}<span class="pill">{{ quota.remaining }} of {{ quota.limit }} {% if channel == "sms" %}SMS{% else %}emails{% endif %} left today</span>{% endif %}
+    {% if channel == "sms" %}{% if SMS_TEST_MODE %}<span class="pill pill-warn">Test mode</span>{% endif %}{% elif MESSAGING_TEST_MODE %}<span class="pill pill-warn">Test mode</span>{% endif %}
+  </form>
+</section>
+
+<div class="grid-2 section-gap">
+{% for p in previews %}
+<section class="card">
+  <h3>{% if p.lang == 'fi' %}Finnish{% else %}English{% endif %} version <span class="pill">{{ p.count }} client{{ p.count|pluralize }}</span></h3>
+  {% if channel == "sms" %}
+  <div class="preview preview-sms">
+    <div class="preview-head">To <strong>{{ p.client.name }}</strong> · {{ p.to }} · {{ p.parts }} SMS</div>
+    <div class="preview-body"><div class="sms-bubble">{{ p.body }}</div></div>
+  </div>
+  {% else %}
+  <div class="preview">
+    <div class="preview-head">To <strong>{{ p.client.name }}</strong> &lt;{{ p.to }}&gt;<br>Subject: <strong>{{ p.subject }}</strong></div>
+    <div class="preview-body">{{ p.body }}</div>
+  </div>
+  {% endif %}
+</section>
+{% endfor %}
+</div>
+{% endblock %}

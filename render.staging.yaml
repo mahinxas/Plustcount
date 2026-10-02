@@ -1,0 +1,78 @@
+# Render Blueprint for staging. Create it in Render: New > Blueprint > pick this repo and file.
+# Everything runs in Frankfurt so client data stays in the EU.
+services:
+  - type: web
+    name: cms-web-staging
+    runtime: python
+    region: frankfurt
+    plan: starter
+    branch: staging
+    buildCommand: pip install uv && uv sync --frozen --no-dev && uv run python manage.py collectstatic --noinput
+    preDeployCommand: uv run python manage.py migrate --noinput
+    startCommand: uv run gunicorn config.wsgi -c gunicorn.conf.py
+    healthCheckPath: /healthz/
+    autoDeployTrigger: checksPass # deploy only after the GitHub Actions tests pass
+    envVars:
+      - fromGroup: cms-shared-staging
+      - key: SENTRY_ENVIRONMENT
+        value: staging
+
+  - type: worker
+    name: cms-worker-staging
+    runtime: python
+    region: frankfurt
+    plan: starter
+    branch: staging
+    buildCommand: pip install uv && uv sync --frozen --no-dev
+    startCommand: uv run celery -A config worker -l info --concurrency 2
+    autoDeployTrigger: checksPass
+    envVars:
+      - fromGroup: cms-shared-staging
+      - key: SENTRY_ENVIRONMENT
+        value: staging
+
+  - type: keyvalue
+    name: cms-redis-staging
+    region: frankfurt
+    plan: starter
+    maxmemoryPolicy: noeviction # never drop queued messages
+    ipAllowList: [] # private network only
+
+databases:
+  - name: cms-db-staging
+    region: frankfurt
+    plan: basic-256mb
+    databaseName: cms
+    user: cms
+    ipAllowList: [] # private network only
+
+envVarGroups:
+  - name: cms-shared-staging
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.3
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase: {name: cms-db-staging, property: connectionString}
+      - key: CELERY_BROKER_URL
+        fromService: {type: keyvalue, name: cms-redis-staging, property: connectionString}
+      # Fill these in the Render dashboard (never commit values):
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: MESSAGING_TEST_MODE
+        value: "1"
+      - key: MESSAGING_TEST_RECIPIENT
+        sync: false
+      - key: MESSAGING_TEST_ALLOWED
+        sync: false

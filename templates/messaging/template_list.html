@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Templates{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Templates</h1><p>Ready-made messages in Finnish and English.</p></div>
+  {% if user.is_admin %}<div class="actions"><a class="btn btn-primary" href="{% url 'messaging:template_create' %}?channel={{ channel }}">{% icon "plus" "sm" %}New {% if channel == "sms" %}SMS{% else %}email{% endif %} template</a></div>{% endif %}
+</div>
+<section class="card card-flush">
+  <nav class="tabs" aria-label="Template type">
+    <a href="?channel=email" {% if channel == "email" %}aria-current="page"{% endif %}>{% icon "mail" "sm" %}Email <span class="count">{{ counts.email }}</span></a>
+    <a href="?channel=sms" {% if channel == "sms" %}aria-current="page"{% endif %}>{% icon "phone" "sm" %}SMS <span class="count">{{ counts.sms }}</span></a>
+  </nav>
+{% if templates %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Template</th><th>{% if channel == "sms" %}Finnish text{% else %}Finnish subject{% endif %}</th><th class="hide-sm">{% if channel == "sms" %}English text{% else %}English subject{% endif %}</th><th class="hide-sm">Updated</th>{% if user.is_admin %}<th></th>{% endif %}</tr></thead>
+    <tbody>{% for t in templates %}
+      <tr><td><div class="cell-person"><span class="stat-icon" style="width:32px;height:32px">{% if channel == "sms" %}{% icon "phone" "sm" %}{% else %}{% icon "mail" "sm" %}{% endif %}</span><span class="row-title">{{ t.title }}</span></div></td>
+        {% if channel == "sms" %}<td>{{ t.body_fi|truncatechars:60|default:"—" }}</td><td class="hide-sm">{{ t.body_en|truncatechars:60|default:"—" }}</td>
+        {% else %}<td>{{ t.subject_fi|default:"—" }}</td><td class="hide-sm">{{ t.subject_en|default:"—" }}</td>{% endif %}
+        <td class="nowrap hide-sm">{{ t.updated_at|date:"j.n.Y" }}</td>
+        {% if user.is_admin %}<td class="num"><a class="btn btn-sm btn-icon" href="{% url 'messaging:template_edit' t.pk %}" aria-label="Edit {{ t.title }}" title="Edit">{% icon "pencil" "sm" %}</a></td>{% endif %}</tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% if not user.is_admin %}<div class="results">Choose a template when sending. The admin manages templates.</div>{% endif %}
+{% else %}
+  <div class="empty"><div class="empty-icon">{% if channel == "sms" %}{% icon "phone" %}{% else %}{% icon "file" %}{% endif %}</div><h3>No {% if channel == "sms" %}SMS{% else %}email{% endif %} templates yet</h3>
+  {% if user.is_admin %}<a class="btn btn-primary" href="{% url 'messaging:template_create' %}?channel={{ channel }}">{% icon "plus" "sm" %}New {% if channel == "sms" %}SMS{% else %}email{% endif %} template</a>{% endif %}</div>
+{% endif %}
+</section>
+{% endblock %}

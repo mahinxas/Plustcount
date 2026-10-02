@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Send message{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'clients:list' %}">Clients</a>{% icon "right" "sm" %}<span>Send message</span></div>
+<div class="page-head"><div><h1>Send {% if is_sms %}SMS{% else %}email{% endif %}</h1>{% include "messaging/_stepper.html" with step=1 %}</div></div>
+
+<section class="card">{% include "messaging/_recipient_summary.html" %}</section>
+
+<form method="post" class="card section-gap" data-compose>{% csrf_token %}
+  {{ form.recipients }}{{ form.idempotency_key }}
+  {{ form.non_field_errors }}
+  <fieldset class="field">
+    <legend class="label">Send as</legend>
+    <div class="segmented" role="radiogroup">
+      {% for radio in form.channel %}
+      <label class="segment">{{ radio.tag }}<span>{% if radio.data.value == "sms" %}{% icon "phone" "sm" %}{% else %}{% icon "mail" "sm" %}{% endif %}{{ radio.choice_label }}</span></label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <div class="form-row">{% include "_field.html" with field=form.template %}{% include "_field.html" with field=form.due_date %}</div>
+
+  <div class="chips-insert"><span>Insert field:</span>{% for key, label in fields.items %}<button type="button" class="chip-btn" data-insert="{{ '{' }}{{ key }}{{ '}' }}" title="{{ label }}" aria-label="Insert {{ '{' }}{{ key }}{{ '}' }}: {{ label }}">{{ "{" }}{{ key }}{{ "}" }}</button>{% endfor %}</div>
+
+  <div class="{% if not single_language %}grid-2{% endif %}">
+  {% if 'fi' in summary.languages or not summary.languages %}
+    {% include "messaging/_lang_block.html" with lang="fi" label="Finnish" count=fi_count subject=form.subject_fi body=form.body_fi has_sample=samples_json.fi single=single_language %}
+  {% else %}{{ form.subject_fi.as_hidden }}{{ form.body_fi.as_hidden }}{% endif %}
+  {% if 'en' in summary.languages %}
+    {% include "messaging/_lang_block.html" with lang="en" label="English" count=en_count subject=form.subject_en body=form.body_en has_sample=samples_json.en single=single_language %}
+  {% else %}{{ form.subject_en.as_hidden }}{{ form.body_en.as_hidden }}{% endif %}
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit" name="step" value="confirm">Review{% icon "arrow" "sm" %}</button>
+    <a class="btn btn-ghost" href="{% url 'clients:list' %}">Cancel</a>
+  </div>
+</form>
+{{ templates_json|json_script:"templates-data" }}
+{{ samples_json|json_script:"samples-data" }}
+{% if is_sms %}{{ sms_rules|json_script:"sms-rules" }}{% endif %}
+{% endblock %}

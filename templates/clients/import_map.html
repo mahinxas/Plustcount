@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Import clients{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'clients:list' %}">Clients</a>{% icon "right" "sm" %}<span>Import</span></div>
+<div class="page-head"><div><h1>Match columns</h1>{% include "clients/_import_steps.html" with step=2 %}</div></div>
+<div class="split">
+  <form method="post" class="card">{% csrf_token %}
+    <p class="muted small">{{ filename }} · {{ row_count }} row{{ row_count|pluralize }}</p>
+    {{ form.non_field_errors }}
+    {% for field in form %}{% include "_field.html" %}{% endfor %}
+    <div class="form-actions"><button class="btn btn-primary" type="submit">Preview{% icon "arrow" "sm" %}</button></div>
+  </form>
+  <section class="card card-flush">
+    <div class="card-head"><h2>First rows</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr>{% for h in headers %}<th>{{ h|default:"(no name)" }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for row in sample %}<tr>{% for cell in row %}<td class="small">{{ cell|truncatechars:32 }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    </table></div>
+  </section>
+</div>
+<form method="post" action="{% url 'clients:import_cancel' %}" class="section-gap">{% csrf_token %}<button class="btn-link" type="submit">Cancel import</button></form>
+{% endblock %}

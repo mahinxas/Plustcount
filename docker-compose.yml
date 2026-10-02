@@ -1,0 +1,16 @@
+# Local PostgreSQL and Redis, matching production. Optional: without them the
+# app uses SQLite and runs background jobs in-process.
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: cms
+      POSTGRES_USER: cms
+      POSTGRES_PASSWORD: cms
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+volumes:
+  pgdata:

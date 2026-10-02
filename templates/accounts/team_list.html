@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Team{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Team</h1><p>Who can log in and how many clients each person handles.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'team_create' %}">{% icon "user-plus" "sm" %}Add team member</a></div>
+</div>
+<section class="card card-flush">
+  <div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Role</th><th>Status</th><th class="num">Clients</th><th class="num">Sent · 30 days</th><th></th></tr></thead>
+    <tbody>
+    {% for m in team %}
+      <tr>
+        <td><div class="cell-person"><span class="avatar tone-{{ m.display_name|tone }}">{{ m.display_name|initials }}</span><div><span class="row-title">{{ m.display_name }}</span><span class="sub">{{ m.email }}</span></div></div></td>
+        <td>{{ m.get_role_display }}</td>
+        <td>{% if m.is_active %}<span class="pill dot pill-active">Active</span>{% else %}<span class="pill dot pill-muted">Deactivated</span>{% endif %}</td>
+        <td class="num"><a href="{% url 'clients:list' %}?owner={{ m.pk }}">{{ m.client_count }}</a></td>
+        <td class="num">{{ m.sent_30d }}</td>
+        <td class="num"><a class="btn btn-sm" href="{% url 'team_edit' m.pk %}">{% icon "pencil" "sm" %}Edit</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

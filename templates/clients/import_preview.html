@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Import clients{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'clients:list' %}">Clients</a>{% icon "right" "sm" %}<span>Import</span></div>
+<div class="page-head"><div><h1>Check and import</h1>{% include "clients/_import_steps.html" with step=3 %}</div></div>
+
+<section class="card">
+  <p class="summary-line">{{ valid_count }} client{{ valid_count|pluralize }} ready{% if owner %}, assigned to {{ owner.display_name }}{% else %}, unassigned{% endif %}</p>
+  {% if problems %}<p class="muted small" style="margin:4px 0 0">{{ problems|length }} row{{ problems|length|pluralize }} will be skipped. Fix them in the file and import again later.</p>{% endif %}
+  <div class="form-actions" style="margin-top:16px">
+    {% if valid_count %}<form method="post">{% csrf_token %}<button class="btn btn-primary" type="submit">{% icon "upload" "sm" %}Import {{ valid_count }} client{{ valid_count|pluralize }}</button></form>{% endif %}
+    <a class="btn" href="{% url 'clients:import_map' %}">{% icon "left" "sm" %}Back</a>
+    <form method="post" action="{% url 'clients:import_cancel' %}">{% csrf_token %}<button class="btn btn-ghost" type="submit">Cancel</button></form>
+  </div>
+</section>
+
+{% if problems %}
+<section class="card card-flush section-gap">
+  <div class="card-head"><h2>Skipped rows <span class="count count-danger">{{ problems|length }}</span></h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Row</th><th>Name</th><th>Problem</th></tr></thead>
+    <tbody>{% for r in problems %}<tr><td class="small">{{ r.line }}</td><td>{{ r.data.name|default:"—" }}</td>
+      <td class="small">{% for e in r.errors %}<div>{{ e }}</div>{% endfor %}{% if r.duplicate %}<div><span class="pill pill-warn">Duplicate</span> {{ r.duplicate }}</div>{% endif %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+
+{% if valid_sample %}
+<section class="card card-flush section-gap">
+  <div class="card-head"><h2>Preview{% if valid_count > valid_sample|length %} <span class="muted small">first {{ valid_sample|length }}</span>{% endif %}</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Row</th><th>Name</th><th>Business ID</th><th>Email</th><th>Phone</th><th>Lang.</th><th>Profession</th></tr></thead>
+    <tbody>{% for r in valid_sample %}<tr><td class="small">{{ r.line }}</td><td class="row-title">{{ r.data.name }}</td><td class="mono">{{ r.data.business_id|default:"—" }}</td>
+      <td>{{ r.data.email|default:"—" }}</td><td class="nowrap">{{ r.data.phone|default:"—" }}</td><td class="small">{{ r.data.language|upper }}</td><td class="small">{{ r.data.profession }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endblock %}

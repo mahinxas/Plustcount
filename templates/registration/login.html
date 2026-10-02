@@ -1,0 +1,14 @@
+{% extends "auth_base.html" %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<h1>Log in</h1>
+<p class="sub">Use your work email.</p>
+<form method="post">{% csrf_token %}
+  {% if form.errors %}<div class="callout callout-danger auth-error">Email or password is wrong, or the account is deactivated.</div>{% endif %}
+  <div class="field"><label for="id_username">Email</label><input type="email" name="username" id="id_username" autocomplete="username" required autofocus value="{{ form.username.value|default:'' }}"></div>
+  <div class="field"><label for="id_password">Password</label><div class="pw"><input type="password" name="password" id="id_password" autocomplete="current-password" required><button type="button" class="pw-toggle" data-pw-toggle aria-controls="id_password" aria-pressed="false">Show</button></div></div>
+  <input type="hidden" name="next" value="{{ next }}">
+  <button class="btn btn-primary btn-block" type="submit">Log in</button>
+</form>
+<p class="auth-link"><a href="{% url 'password_reset' %}">Forgot password?</a></p>
+{% endblock %}

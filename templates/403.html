@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}No access{% endblock %}
+{% block content %}
+<section class="card"><div class="empty"><div class="empty-icon">{% icon "ban" %}</div><h3>No access</h3><p>This page is for admins only.</p><a class="btn" href="{% url 'dashboard' %}">Back to dashboard</a></div></section>
+{% endblock %}

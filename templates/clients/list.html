@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Clients{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% if user.is_admin %}Clients{% else %}My clients{% endif %}</h1>
+    <p>Select clients to email them{% if user.is_admin %} or move them to a team member{% endif %}.</p>
+  </div>
+  <div class="actions">
+    {% if total and can_email %}
+    <form method="post" action="{% url 'messaging:compose' %}">{% csrf_token %}
+      <input type="hidden" name="scope" value="all_matching"><input type="hidden" name="filter_query" value="{{ filter_query }}">
+      <button class="btn" type="submit">{% icon "mail" %}Message all {{ total }}{% if filters %} shown{% endif %}</button>
+    </form>
+    {% endif %}
+    {% if user.is_admin %}
+      <a class="btn" href="{% url 'clients:import_upload' %}">{% icon "upload" %}Import</a>
+      <a class="btn btn-primary" href="{% url 'clients:create' %}">{% icon "plus" %}Add client</a>
+    {% endif %}
+  </div>
+</div>
+
+<section class="card card-flush">
+  <nav class="tabs" aria-label="Client groups">
+    {% for t in tabs %}<a href="{% query t.params %}" {% if t.active %}aria-current="page"{% endif %}>{{ t.label }} <span class="count">{{ t.count }}</span></a>{% endfor %}
+  </nav>
+
+  <form method="get" class="toolbar" role="search">
+    {% if filters.status %}<input type="hidden" name="status" value="{{ filters.status }}">{% endif %}
+    <div class="grow"><label for="q">Search</label>
+      <div class="input-icon">{% icon "search" %}<input type="search" id="q" name="q" value="{{ filters.q|default:'' }}" placeholder="Name, business ID, email or phone"></div></div>
+    <div><label for="profession">Profession</label>
+      <select id="profession" name="profession" data-autosubmit><option value="">All</option>
+        {% for value, label in professions %}<option value="{{ value }}" {% if filters.profession == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label for="language">Language</label>
+      <select id="language" name="language" data-autosubmit><option value="">All</option>
+        <option value="fi" {% if filters.language == 'fi' %}selected{% endif %}>Finnish</option>
+        <option value="en" {% if filters.language == 'en' %}selected{% endif %}>English</option></select></div>
+    {% if members %}
+    <div><label for="owner">Team member</label>
+      <select id="owner" name="owner" data-autosubmit><option value="">Everyone</option>
+        <option value="none" {% if filters.owner == 'none' %}selected{% endif %}>Unassigned</option>
+        {% for m in members %}<option value="{{ m.pk }}" {% if filters.owner == m.pk|stringformat:'d' %}selected{% endif %}>{{ m.display_name }}</option>{% endfor %}
+      </select></div>
+    {% endif %}
+    <button class="btn" type="submit">Search</button>
+    {% if filters %}<a class="btn-link" href="{% url 'clients:list' %}">Clear all</a>{% endif %}
+  </form>
+
+  {% if page.object_list %}
+  <div class="results">Showing {{ page.start_index }}–{{ page.end_index }} of {{ total }}</div>
+  <form method="post" id="bulk-form" action="{% url 'messaging:compose' %}">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th class="check"><input type="checkbox" data-select-all aria-label="Select all on this page"></th>
+        <th>Client</th><th class="hide-sm">Contact</th><th class="hide-sm">Profession</th><th class="hide-md">Lang.</th>
+        {% if user.is_admin %}<th class="hide-sm">Team member</th>{% endif %}
+        <th class="num"><span class="sr-only">Actions</span></th>
+      </tr></thead>
+      <tbody>
+      {% for c in page.object_list %}
+        <tr>
+          <td class="check"><input type="checkbox" name="client_ids" value="{{ c.pk }}" data-row aria-label="Select {{ c.name }}"></td>
+          <td><div class="cell-person">
+            <span class="avatar tone-{{ c.name|tone }}">{{ c.name|initials }}</span>
+            <div><a class="row-title" href="{% url 'clients:detail' c.pk %}">{{ c.name }}</a>
+              <span class="sub">{{ c.get_company_type_display }}{% if c.business_id %} · <span class="mono">{{ c.business_id }}</span>{% endif %}</span>
+              <span class="sub show-sm">{% if c.email %}{{ c.email }}{% else %}{% include "clients/_add_detail.html" with field="email" label="email" %}{% endif %}{% if c.opted_out %} · Opted out{% endif %}{% if user.is_admin %} · {{ c.owner.display_name|default:"Unassigned" }}{% endif %}</span></div>
+          </div></td>
+          <td class="hide-sm"><div class="cell-contact">
+            {% if c.email %}<span>{% icon "mail" "sm" %}{{ c.email }}<button type="button" class="copy-btn" data-copy="{{ c.email }}" aria-label="Copy email">{% icon "copy" "sm" %}</button></span>
+            {% else %}<span>{% include "clients/_add_detail.html" with field="email" label="email" %}</span>{% endif %}
+            {% if c.phone %}<span>{% icon "phone" "sm" %}{{ c.phone }}</span>
+            {% else %}<span>{% include "clients/_add_detail.html" with field="phone" label="phone" %}</span>{% endif %}
+            {% if c.opted_out %}<span><span class="pill pill-warn">Opted out</span></span>{% endif %}
+          </div></td>
+          <td class="hide-sm"><span class="pill">{{ c.get_profession_display }}</span></td>
+          <td class="small hide-md">{{ c.language|upper }}</td>
+          {% if user.is_admin %}<td class="hide-sm">{% if c.owner %}<span class="person-inline"><span class="avatar avatar-sm tone-{{ c.owner.display_name|tone }}">{{ c.owner.display_name|initials }}</span>{{ c.owner.display_name }}</span>{% else %}<span class="pill pill-muted">Unassigned</span>{% endif %}</td>{% endif %}
+          <td class="num"><a class="btn btn-sm btn-icon" href="{% url 'clients:edit' c.pk %}?next={{ request.get_full_path|urlencode }}" title="Edit {{ c.name }}" aria-label="Edit {{ c.name }}">{% icon "pencil" "sm" %}</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+
+    <div class="bulk-bar" data-bulk-bar hidden>
+      <span class="selected"><span data-selected-count>0</span> selected</span>
+      {% if can_email %}<button class="btn btn-primary" type="submit" name="channel" value="email">{% icon "mail" %}Send email</button>
+      <button class="btn" type="submit" name="channel" value="sms">{% icon "phone" %}Send SMS</button>{% endif %}
+      {% if user.is_admin %}
+        <label class="sr-only" for="assign_to">Move selected clients</label>
+        <select id="assign_to" name="assign_to">
+          <option value="">Move to team member…</option>
+          {% for m in members %}{% if filters.owner != m.pk|stringformat:'d' %}<option value="{{ m.pk }}">{{ m.display_name }}</option>{% endif %}{% endfor %}
+          {% if filters.owner != 'none' %}<option value="none">Unassign (no team member)</option>{% endif %}
+        </select>
+        <button class="btn" type="submit" formaction="{% url 'clients:bulk_assign' %}">Move</button>
+      {% endif %}
+    </div>
+  </form>
+
+  <form method="post" id="quick-form" hidden>{% csrf_token %}
+    <input type="hidden" name="field"><input type="hidden" name="value"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+  </form>
+
+  {% if page.has_other_pages %}
+  <nav class="pagination" aria-label="Pages">
+    {% if page.has_previous %}<a href="{% query page=page.previous_page_number %}">{% icon "left" "sm" %}Previous</a>{% else %}<span class="disabled">{% icon "left" "sm" %}Previous</span>{% endif %}
+    {% for n in page_range %}
+      {% if n == page.paginator.ELLIPSIS %}<span>…</span>
+      {% elif n == page.number %}<span class="current" aria-current="page">{{ n }}</span>
+      {% else %}<a href="{% query page=n %}">{{ n }}</a>{% endif %}
+    {% endfor %}
+    {% if page.has_next %}<a href="{% query page=page.next_page_number %}">Next{% icon "right" "sm" %}</a>{% else %}<span class="disabled">Next{% icon "right" "sm" %}</span>{% endif %}
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty">
+    <div class="empty-icon">{% icon "users" %}</div>
+    {% if filters %}
+      <h3>No matching clients</h3><p>Try another search or clear the filters.</p><a class="btn" href="{% url 'clients:list' %}">Clear filters</a>
+    {% elif user.is_admin %}
+      <h3>No clients yet</h3><p>Import your client list from Excel or CSV, or add clients one by one.</p><a class="btn btn-primary" href="{% url 'clients:import_upload' %}">{% icon "upload" %}Import clients</a>
+    {% else %}
+      <h3>No clients assigned to you</h3><p>The admin assigns clients to team members.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
