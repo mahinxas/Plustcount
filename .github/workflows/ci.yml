@@ -40,7 +40,7 @@ jobs:
           uv run python manage.py migrate --noinput
           uv run python manage.py shell -c "
           from django.test import Client
-          r = Client().get('/healthz/')
+          r = Client().get('/healthz/', HTTP_HOST='localhost')
           print(r.status_code, r.content)
           assert r.status_code == 200, r.content
           from django.conf import settings
