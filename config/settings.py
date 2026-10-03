@@ -5,6 +5,7 @@ secrets never live in the code. See .env.example for the full list.
 """
 
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
@@ -17,6 +18,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Secrets live in client_messaging/.env (never committed). Real environment
 # variables, as set on a server, win over the file.
 load_dotenv(BASE_DIR / ".env", override=False)
+
+
+# `manage.py test` always runs jobs in-process and uses a private cache, whatever the
+# environment says, so a developer's or CI's Redis never changes test results.
+TESTING = sys.argv[1:2] == ["test"]
 
 
 def env_bool(name, default=False):
@@ -238,7 +244,7 @@ SMS_DAILY_LIMIT = int(os.environ.get("SMS_DAILY_LIMIT", 0))
 # The login throttle counts failures in the cache, so it must be shared by all web
 # processes: Redis in production (REDIS_URL), local memory for development and tests.
 REDIS_URL = os.environ.get("REDIS_URL") or os.environ.get("CELERY_BROKER_URL", "")
-if REDIS_URL:
+if REDIS_URL and not TESTING:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
@@ -266,7 +272,7 @@ if SENTRY_DSN:
 # Without a broker, tasks run immediately in the web process (fine for local
 # development and tests). In production set CELERY_BROKER_URL to Redis.
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "")
-CELERY_TASK_ALWAYS_EAGER = not CELERY_BROKER_URL
+CELERY_TASK_ALWAYS_EAGER = TESTING or not CELERY_BROKER_URL
 CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1

@@ -33,6 +33,19 @@ jobs:
         run: uv run python manage.py makemigrations --check --dry-run
       - name: Tests
         run: uv run python manage.py test
+      - name: Real Redis and Postgres answer the health check
+        env:
+          DJANGO_DEBUG: "1"
+        run: |
+          uv run python manage.py migrate --noinput
+          uv run python manage.py shell -c "
+          from django.test import Client
+          r = Client().get('/healthz/')
+          print(r.status_code, r.content)
+          assert r.status_code == 200, r.content
+          from django.conf import settings
+          assert 'redis' in settings.CACHES['default']['BACKEND'].lower()
+          "
       - name: Production settings pass Django's deploy checks
         env:
           DJANGO_DEBUG: "0"
